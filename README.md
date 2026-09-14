@@ -1,35 +1,78 @@
 # Music Mashup
-Python based application that uses ffmpeg to import audio files in mp3 format, cut each file, then combine each cut or uncut audio file into a finalized audio file.
 
-to run:
-do cmd in your address bar in the file view then type:
+Splice a **series/collection of songs** into one continuous mix — automatically
+or with exact control.
 
-pip install pydub
+The original 2023 tool was a fixed 10-row tkinter form: pick MP3s, type
+in/out minutes+seconds, append. This rewrite keeps that mission (cut each song
+and combine the cuts into a final file) but makes the *collection* a first-class
+object and lets the splicing be automatic:
 
-after, click in the address bar for the folder mp3_song_mashup_project and type "cmd" without quotes and hit enter. 
-Once the command line pops up, type python main.py to run the app
+- a **web UI** for adding, reordering, and editing a song series,
+- **auto-splice** modes (trim silence, beat-aligned cuts) or explicit in/out,
+- **crossfades**, per-clip **gain/fades**, and **EBU R128 loudness normalization**,
+- a **CLI** for scriptable end-to-end splicing,
+- a real, passing test suite and a supported audio-format set.
 
-Please note that you will have to have ffmpeg installed to work (which may have been installed previously for your system) If you need to install it, follow the steps below:
-(also as part of the .7zip file)
+## Why it moved off pydub
 
-___
+`pydub` depends on `audioop`, which was **removed from Python stdlib in 3.13**
+(no backport). This project now targets modern Python (3.14) and uses
+**numpy + soundfile** for audio I/O and **librosa** for analysis. `ffmpeg` is no
+longer required for the supported formats.
 
-Follow these steps to install ffmpeg on Windows 10:
-    Download the ffmpeg package for Windows from the official website: https://www.ffmpeg.org/download.html. Choose the "Windows builds" option from the download section.
+## Quick start
 
-    Once downloaded, extract the contents of the zip archive to a folder. For example, you can extract it to C:\ffmpeg.
+Requires Python 3.10+.
 
-    Add the ffmpeg executable to your system's PATH:
-    a. Press the Windows key, type "Environment Variables" and open "Edit the system environment variables".
-    b. Click the "Environment Variables..." button near the bottom right corner of the System Properties window.
-    c. In the "System Variables" section, find the variable named Path and click "Edit...".
-    d. In the "Edit environment variable" window, click "New" and add the path to the bin folder inside the extracted ffmpeg folder. 
-	For example, if you extracted ffmpeg to C:\ffmpeg, add C:\ffmpeg\bin to the Path variable.
-    e. Click "OK" to save your changes and close all open windows.
+```bash
+python -m venv .venv
+source .venv/bin/activate       # on Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+python -m musicmashup            # web UI at http://127.0.0.1:8000/
+```
 
-    Restart your command prompt or any other running terminals to ensure the new PATH settings take effect. You can test if the ffmpeg installation was successful by running the following command in a new command prompt:
+Or splice a folder from the command line:
 
-    ffmpeg -version
+```bash
+python -m musicmashup.cli songs/ -o mix.wav --detect silence --crossfade 0.5 --normalize
+```
 
-    If the installation was successful, this command should display the version information for ffmpeg.
-Once ffmpeg is installed and added to your system's PATH, you should be able to run your main.py script without encountering the error.
+## Features
+
+| Feature | How |
+|---|---|
+| Upload many formats | MP3, WAV, FLAC, OGG, AIFF, AU, CAF, W64, WMA, OPUS |
+| Series / collection | ordered list of clips, editable + reorderable in the UI |
+| Auto splice | `--detect silence` (trim edges) or `--detect beat` (beat-aligned) |
+| Explicit control | per-clip in/out seconds, fade in/out, gain dB |
+| Crossfade | equal-power crossfade between adjacent clips |
+| Loudness | EBU R128 normalization to a target LUFS |
+| Output | WAV (default) or other libsndfile formats by extension |
+
+## Architecture
+
+```
+musicmashup/
+  model.py     Collection/Clip dataclasses, JSON serialization
+  audio.py     numpy + soundfile I/O, resampling, silence-edge trim
+  analysis.py  librosa silence/BPM/beat detection (degrade gracefully)
+  splice.py    engine: slice, gain/fade, crossfade, R128 normalize
+  server.py    stdlib HTTP server: upload/analysis/render, serves static UI
+  cli.py       scriptable CLI
+  static/      web UI (HTML/CSS/JS)
+  tests/       pytest suite with synthesized fixtures (no binary assets)
+```
+
+The splice engine operates purely on float32 numpy arrays, so it is fully
+unit-testable without an audio backend. See `musicmashup/` for the modules.
+
+## Tests
+
+```bash
+PYTHONPATH=.. .venv/bin/python -m pytest musicmashup/tests/ -q
+```
+
+## License
+
+MIT — see `LICENSE`.

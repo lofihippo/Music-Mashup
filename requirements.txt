@@ -1,0 +1,13 @@
+# Audio I/O and DSP
+numpy>=1.26
+soundfile>=0.12
+scipy>=1.11
+
+# Analysis (silence / BPM / beat detection)
+librosa>=0.10
+
+# Loudness normalization (EBU R128)
+pyloudnorm>=0.2
+
+# Dev / tests
+pytest>=7
