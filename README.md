@@ -17,13 +17,6 @@ object and lets the splicing be automatic:
 
 ![Music Mashup web UI](static/assets/screenshot.png)
 
-## Why it moved off pydub
-
-`pydub` depends on `audioop`, which was **removed from Python stdlib in 3.13**
-(no backport). This project now targets modern Python (3.14) and uses
-**numpy + soundfile** for audio I/O and **librosa** for analysis. `ffmpeg` is no
-longer required for the supported formats.
-
 ## Quick start
 
 Requires Python 3.10+.
