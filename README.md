@@ -3,10 +3,7 @@
 Splice a **series/collection of songs** into one continuous mix — automatically
 or with exact control.
 
-The original 2023 tool was a fixed 10-row tkinter form: pick MP3s, type
-in/out minutes+seconds, append. This rewrite keeps that mission (cut each song
-and combine the cuts into a final file) but makes the *collection* a first-class
-object and lets the splicing be automatic:
+Includes:
 
 - a **web UI** for adding, reordering, and editing a song series,
 - **auto-splice "Best Parts"** (finds each track's loudest crescendo and pulls a
