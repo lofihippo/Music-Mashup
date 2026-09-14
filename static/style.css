@@ -26,6 +26,14 @@ header {
 header h1 { margin: 0; font-size: 1.8rem; letter-spacing: 0.3px; }
 .tagline { color: var(--muted); margin: 0.25rem 0 0; }
 
+.centered-header {
+  text-align: center;
+  max-width: 900px;
+  margin: 0 auto;
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+}
+
 main {
   max-width: 900px;
   margin: 0 auto;
@@ -51,9 +59,9 @@ input[type="text"], input[type="number"], select {
   color: var(--text);
   padding: 0.4rem 0.5rem;
   border-radius: 6px;
-  max-width: 110px;
 }
 input[type="number"] { max-width: 90px; }
+select { max-width: 240px; }
 input[type="file"] { margin: 0.4rem 0; }
 
 button, .button {
@@ -71,6 +79,33 @@ button.primary { background: var(--accent); border-color: var(--accent); font-we
 button.primary:hover { filter: brightness(1.1); }
 button.danger { color: var(--danger); }
 
+/* collapsible sections ------------------------------------------------ */
+.card.collapsible { padding: 0; overflow: hidden; }
+.collapsible-head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font-size: 1.05rem;
+  font-weight: 600;
+  text-align: left;
+  padding: 0.9rem 1.25rem;
+  cursor: pointer;
+}
+.collapsible-head:hover { background: var(--card2); }
+.collapsible-head .chev {
+  transition: transform 0.15s ease;
+  color: var(--muted);
+}
+.card.open .collapsible-head .chev { transform: rotate(90deg); }
+.collapsible-body {
+  padding: 0 1.25rem 1.25rem;
+}
+.collapsible-body.collapsed { display: none; }
+
 .list { list-style: none; margin: 0.5rem 0 0; padding: 0; display: grid; gap: 0.5rem; }
 .list li {
   background: var(--card2);
@@ -81,19 +116,28 @@ button.danger { color: var(--danger); }
 .list.upload li { display: flex; gap: 0.5rem; align-items: center; justify-content: space-between; }
 
 .clips li {
-  display: grid;
-  grid-template-columns: auto 1fr auto auto;
-  gap: 0.6rem;
-  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
   cursor: grab;
 }
 .clips li.dragging { opacity: 0.5; }
-.clips .drag { color: var(--muted); font-size: 1.2rem; }
-.clips .file { font-weight: 600; }
-.clips .fields { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
-.clips .fields label { margin: 0; }
-.clips .fields input { max-width: 74px; }
-.clips .meta { color: var(--muted); font-size: 0.8rem; }
+.clips .drag { color: var(--muted); font-size: 1.2rem; flex-shrink: 0; }
+.clips .clip-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.clips .filename { font-weight: 600; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.clips .meta { color: var(--muted); font-size: 0.8rem; white-space: nowrap; }
+.clips .clip-fields {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.clips .clip-fields label { margin: 0; }
+.clips .clip-fields input { max-width: 74px; }
 
 .status { margin-top: 0.75rem; font-size: 0.9rem; }
 .status.error { color: var(--danger); }

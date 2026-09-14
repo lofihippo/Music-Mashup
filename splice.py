@@ -150,13 +150,16 @@ def auto_splice_clip(
     detect: str = "off",
     bpm: Optional[float] = None,
     min_silence_ms: int = 500,
+    before_s: float = 2.5,
+    after_s: float = 1.0,
 ) -> Clip:
     """Suggest splice bounds for a clip (returns a copy, does not mutate).
 
     detect modes:
-      "off"     -> leave as-is
-      "silence" -> trim leading/trailing silence
-      "beat"    -> snap to beat-aligned in/out
+      "off"       -> leave as-is
+      "silence"   -> trim leading/trailing silence
+      "beat"      -> snap to beat-aligned in/out
+      "highlight" -> single loudest crescendo window (best part of the track)
     """
     out = copy.deepcopy(clip)
     dur = audio.duration_s(data, sr)
@@ -177,6 +180,13 @@ def auto_splice_clip(
         if beats:
             out.detected_start = beats[0]
             out.detected_end = beats[-1]
+        return out
+
+    if detect == "highlight":
+        win = analysis.highlight_window(
+            data, sr, before_s=before_s, after_s=after_s)
+        if win:
+            out.detected_start, out.detected_end = win
         return out
 
     return out

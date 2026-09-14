@@ -7,42 +7,63 @@
   <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
-  <header>
+  <header class="centered-header">
     <h1>Music Mashup</h1>
     <p class="tagline">Splice a series of songs into a continuous mix.</p>
   </header>
 
   <main>
-    <section class="card">
-      <h2>1. Add songs</h2>
-      <input type="file" id="files" multiple
-             accept="audio/*,.mp3,.wav,.flac,.ogg,.aiff,.m4a,.aac,.opus,.wma" />
-      <button id="uploadBtn" class="primary">Upload</button>
-      <ul id="uploadList" class="list"></ul>
+    <section class="card collapsible">
+      <button class="collapsible-head" type="button" data-collapse="#sec1">
+        <span class="chev">▸</span>
+        <span>1. Add songs</span>
+      </button>
+      <div id="sec1" class="collapsible-body">
+        <input type="file" id="files" multiple
+               accept="audio/*,.mp3,.wav,.flac,.ogg,.aiff,.m4a,.aac,.opus,.wma" />
+        <button id="uploadBtn" class="primary">Upload</button>
+        <ul id="uploadList" class="list"></ul>
+      </div>
     </section>
 
-    <section class="card">
-      <h2>2. Arrange &amp; edit the series</h2>
-      <p class="hint">Drag clips to reorder. Set explicit in/out, fades and gain;
-         or toggle auto-splice which fills them via silence/beat detection.</p>
-      <ul id="clipList" class="list clips"></ul>
-      <p id="clipsEmpty" class="muted">Add songs above to begin.</p>
+    <section class="card collapsible">
+      <button class="collapsible-head" type="button" data-collapse="#sec2">
+        <span class="chev">▸</span>
+        <span>2. Arrange &amp; edit the series</span>
+      </button>
+      <div id="sec2" class="collapsible-body">
+        <p class="hint">Drag clips to reorder. Set explicit in/out, fades and gain.</p>
+        <ul id="clipList" class="list clips"></ul>
+        <p id="clipsEmpty" class="muted">Add songs above to begin.</p>
+      </div>
     </section>
 
-    <section class="card">
-      <h2>3. Mix options</h2>
-      <label>Crossfade (s): <input type="number" id="crossfade" value="0.5" step="0.1" min="0" /></label>
-      <label>Auto-splice mode:
-        <select id="detect">
-          <option value="off">Off (use explicit)</option>
-          <option value="silence">Trim silence</option>
-          <option value="beat">Beat-aligned</option>
-        </select>
-      </label>
-      <label><input type="checkbox" id="normalize" checked /> Normalize loudness (EBU R128)</label>
-      <label>Target LUFS: <input type="number" id="targetLufs" value="-16" step="1" /></label>
-      <button id="renderBtn" class="primary">Render mashup</button>
-      <div id="status" class="status"></div>
+    <section class="card collapsible">
+      <button class="collapsible-head" type="button" data-collapse="#sec3">
+        <span class="chev">▸</span>
+        <span>3. Mix options</span>
+      </button>
+      <div id="sec3" class="collapsible-body">
+        <label>Crossfade (s): <input type="number" id="crossfade" value="0.5" step="0.1" min="0" /></label>
+        <label>Auto-splice mode:
+          <select id="detect">
+            <option value="highlight">Best Parts (Loudest Parts)</option>
+            <option value="off">Off (use explicit in/out)</option>
+          </select>
+        </label>
+        <p class="hint">
+          "Best Parts" finds the loudest moment in each track and pulls a window
+          around it. Increase <em>Before peak</em> to grab more of the build-up
+          into the drop (the crescendo); adjust <em>After peak</em> to control how
+          much of the release you keep.
+        </p>
+        <label>Before peak (s): <input type="number" id="beforeS" value="2.5" step="0.1" min="0" /></label>
+        <label>After peak (s): <input type="number" id="afterS" value="1.0" step="0.1" min="0" /></label>
+        <label><input type="checkbox" id="normalize" checked /> Normalize loudness (EBU R128)</label>
+        <label>Target LUFS: <input type="number" id="targetLufs" value="-16" step="1" /></label>
+        <button id="renderBtn" class="primary">Render mashup</button>
+        <div id="status" class="status"></div>
+      </div>
     </section>
 
     <section class="card" id="resultCard" hidden>

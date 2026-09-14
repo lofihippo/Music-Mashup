@@ -77,8 +77,6 @@ async function analyzeAll() {
       if (match) { match.duration_s = info.duration_s; match.bpm = info.bpm; }
       c.duration_s = info.duration_s;
       c.bpm = info.bpm;
-      c.silence_spans = info.silence_spans || [];
-      c.beats = info.beats || [];
     } catch (e) { /* leave unknown */ }
   }
   state.analyzing = false;
@@ -127,15 +125,28 @@ function renderClips() {
     const li = document.createElement("li");
     li.draggable = true;
 
+    // Track name row (drag handle + filename + meta + remove)
+    const head = document.createElement("div");
+    head.className = "clip-head";
     const drag = document.createElement("span");
     drag.className = "drag"; drag.textContent = "⠿";
-
-    const file = document.createElement("div");
-    file.className = "file";
+    const file = document.createElement("span");
     file.textContent = clip.name || clip.source;
+    file.className = "filename";
+    const meta = document.createElement("span");
+    meta.className = "meta";
+    meta.textContent = clip.bpm ? clip.bpm.toFixed(1) + " BPM · " + (clip.duration_s || 0).toFixed(1) + "s" : (clip.duration_s || 0).toFixed(1) + "s";
+    const rm = document.createElement("button");
+    rm.className = "danger"; rm.textContent = "×";
+    rm.addEventListener("click", () => {
+      state.clips.splice(idx, 1);
+      renderClips();
+    });
+    head.append(drag, file, meta, rm);
 
+    // Controls row, on a line below (clean horizontal layout)
     const fields = document.createElement("div");
-    fields.className = "fields";
+    fields.className = "clip-fields";
     fields.innerHTML =
       field("Start", "start", idx) + field("End", "end", idx) +
       field("Fade in", "fade_in", idx, 0.1) + field("Fade out", "fade_out", idx, 0.1) +
@@ -147,19 +158,7 @@ function renderClips() {
       });
     });
 
-    const meta = document.createElement("div");
-    meta.className = "meta";
-    meta.textContent = clip.bpm ? clip.bpm.toFixed(1) + " BPM · " + (clip.duration_s || 0).toFixed(1) + "s" : (clip.duration_s || 0).toFixed(1) + "s";
-
-    const rm = document.createElement("button");
-    rm.className = "danger"; rm.textContent = "×";
-    rm.addEventListener("click", () => {
-      state.clips.splice(idx, 1);
-      renderClips();
-    });
-
-    li.append(drag, file, fields);
-    li.append(meta, rm);
+    li.append(head, fields);
     ul.appendChild(li);
   });
 
@@ -191,6 +190,26 @@ function getAfter(ul, y) {
   return els.find((el) => y < el.getBoundingClientRect().top + el.offsetHeight / 2) || null;
 }
 
+// ---- collapsible sections ----
+function setupCollapsibles() {
+  // Open the workflow-relevant sections by default (add songs + mix options);
+  // collapse the (potentially large) track list so the page stays compact.
+  const openByDefault = new Set(["sec1", "sec3"]);
+  document.querySelectorAll(".collapsible").forEach((card) => {
+    const head = card.querySelector(".collapsible-head");
+    const body = card.querySelector(".collapsible-body");
+    if (!head || !body) return;
+    const shouldOpen = openByDefault.has(body.id);
+    body.classList.toggle("collapsed", !shouldOpen);
+    if (shouldOpen) card.classList.add("open");
+    head.addEventListener("click", () => {
+      const isOpen = card.classList.toggle("open");
+      body.classList.toggle("collapsed", !isOpen);
+    });
+  });
+}
+setupCollapsibles();
+
 // ---- detect / render ----
 $("#detect").addEventListener("change", async () => {
   await analyzeAll();
@@ -208,6 +227,8 @@ async function renderMashup() {
     target_lufs: parseFloat($("#targetLufs").value) || -16,
     // apply current detect to clips with no explicit start/end
     detect: $("#detect").value,
+    before_s: parseFloat($("#beforeS").value) || 2.5,
+    after_s: parseFloat($("#afterS").value) || 1.0,
     clips: state.clips.map((c) => ({
       source: c.source,
       start: c.start, end: c.end,

@@ -36,3 +36,25 @@ def make_pulse_train(duration_s: float, sr: int = 44100, bpm: float = 120.0,
 def silence(duration_s: float, sr: int = 44100, channels: int = 2) -> np.ndarray:
     n = int(duration_s * sr)
     return np.zeros((n, channels), dtype=np.float32)
+
+
+def make_crescendo_burst(duration_s: float, sr: int = 44100,
+                         burst_center_s: float = None,
+                         burst_width_s: float = 1.0,
+                         channels: int = 2) -> np.ndarray:
+    """A quiet bed with one short loud burst (clear RMS peak to detect).
+
+    Used to validate highlight detection finds the burst and cuts around it.
+    """
+    n = int(duration_s * sr)
+    data = np.full((n, channels), 0.05, dtype=np.float32)  # quiet bed
+    if burst_center_s is None:
+        burst_center_s = duration_s * 0.6
+    center = int(burst_center_s * sr)
+    half = int((burst_width_s / 2.0) * sr)
+    start = max(0, center - half)
+    end = min(n, center + half)
+    if end > start:
+        win = np.hanning(end - start)[:, None]  # smooth window for a clear peak
+        data[start:end] += 0.9 * win
+    return np.ascontiguousarray(data, dtype=np.float32)

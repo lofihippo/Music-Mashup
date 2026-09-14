@@ -24,14 +24,13 @@ def build_playlist(paths, *, mode="off", sr=44100):
         arr = audio.read(path, sr)
         source_index[name] = arr
         clip = Clip(source=name, start=0.0, end=audio.duration_s(arr, sr))
-        if mode in ("silence", "beat"):
+        if mode == "highlight":
             clip = splice.auto_splice_clip(clip, arr, sr=sr, detect=mode)
-            # apply detected bounds when explicit not set
-            if not clip.is_explicit():
-                if clip.detected_start is not None:
-                    clip.start = clip.detected_start
-                if clip.detected_end is not None:
-                    clip.end = clip.detected_end
+            # auto-detected bounds override the placeholder full-file bounds
+            if clip.detected_start is not None:
+                clip.start = clip.detected_start
+            if clip.detected_end is not None:
+                clip.end = clip.detected_end
         collection.add(clip)
     return collection, source_index
 
@@ -40,8 +39,9 @@ def main(argv=None):
     p = argparse.ArgumentParser(description="Splice a series of songs into a mix.")
     p.add_argument("sources", nargs="+", help="audio files or a directory")
     p.add_argument("-o", "--output", default="mashup.wav")
-    p.add_argument("--detect", choices=["off", "silence", "beat"], default="off",
-                   help="automatic splice-point detection")
+    p.add_argument("--detect", choices=["highlight", "off"], default="highlight",
+                   help="automatic splice-point selection "
+                        "(highlight = best/loudest part of each track)")
     p.add_argument("--crossfade", type=float, default=0.0,
                    help="crossfade seconds between clips")
     p.add_argument("--normalize", action="store_true",

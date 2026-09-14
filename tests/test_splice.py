@@ -91,3 +91,71 @@ def test_skip_gapped_clip():
     c.add(Clip(source="b", start=5.0, end=5.0))  # empty slice
     out = splice.render(c, {"a": a, "b": b})
     assert out.shape[0] == a.shape[0]  # only the first contributes
+
+
+# ---- highlight / best-part auto-splice -------------------------------------
+def test_highlight_window_finds_burst_center():
+    from musicmashup import analysis
+    from tests.fixtures import make_crescendo_burst
+
+    sr = 44100
+    dur = 8.0
+    burst = 5.0  # burst center at 5s
+    data = make_crescendo_burst(dur, sr=sr, burst_center_s=burst)
+    win = analysis.highlight_window(data, sr)
+    assert win is not None
+    start, end = win
+    # window should straddle the burst (loudest) center
+    assert start < burst < end
+    assert end - start > 0.5
+
+
+def test_highlight_window_before_after():
+    from musicmashup import analysis
+    from tests.fixtures import make_crescendo_burst
+
+    sr = 44100
+    burst = 5.0
+    data = make_crescendo_burst(8.0, sr=sr, burst_center_s=burst)
+    start, end = analysis.highlight_window(data, sr, before_s=2.5, after_s=1.0)
+    # starts ~2.5s before peak, ends ~1s after (clamped to clip bounds)
+    assert abs((burst - start) - 2.5) < 0.3
+    assert abs((end - burst) - 1.0) < 0.3
+
+
+def test_auto_splice_highlight_sets_bounds():
+    from tests.fixtures import make_crescendo_burst
+
+    sr = 44100
+    burst = 5.0
+    data = make_crescendo_burst(8.0, sr=sr, burst_center_s=burst)
+    clip = Clip(source="a")
+    auto = splice.auto_splice_clip(clip, data, sr=sr, detect="highlight")
+    assert auto.detected_start is not None
+    assert auto.detected_end is not None
+    assert auto.detected_start < burst < auto.detected_end
+
+
+def test_highlight_renders_short_window():
+    from tests.fixtures import make_crescendo_burst
+
+    sr = 44100
+    data = make_crescendo_burst(6.0, sr=sr, burst_center_s=4.0)
+    c = Collection(name="hl")
+    c.add(Clip(source="a"))
+    c.add(Clip(source="b"))
+    data2 = make_crescendo_burst(6.0, sr=sr, burst_center_s=3.5)
+    # render with highlight detect applied
+    auto_a = splice.auto_splice_clip(Clip(source="a"), data, sr=sr, detect="highlight")
+    auto_b = splice.auto_splice_clip(Clip(source="b"), data2, sr=sr, detect="highlight")
+    # transfer detected bounds to start/end (as the CLI/server does)
+    for a in (auto_a, auto_b):
+        a.start = a.detected_start
+        a.end = a.detected_end
+    c2 = Collection(name="hl2")
+    c2.add(auto_a)
+    c2.add(auto_b)
+    out = splice.render(c2, {"a": data, "b": data2}, sr=sr)
+    # each highlight is ~3.5s (2.5 before + 1 after), so total < 8s
+    assert out.shape[0] / sr < 8.0
+    assert out.shape[0] / sr > 3.0

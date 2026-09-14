@@ -11,6 +11,8 @@ from typing import List, Optional, Tuple
 
 import numpy as np
 
+from .audio import duration_s
+
 
 def has_analysis() -> bool:
     try:
@@ -106,3 +108,82 @@ def audio_mono(data: np.ndarray) -> np.ndarray:
     if data.ndim == 2 and data.shape[1] > 1:
         return data.mean(axis=1)
     return data.reshape(-1)
+
+
+# ---- highlight ("best part") detection -------------------------------------
+# Find the loudest crescendo moments in a track and a window that captures the
+# build-up into the peak (hook / drop), which is what a mashup wants to splice.
+
+def _rms_db(data: np.ndarray, sr: int, hop_ms: int = 10,
+            frame_ms: int = 25) -> np.ndarray:
+    """Return a dB RMS energy envelope (mono), one value per hop frame."""
+    librosa = _require_librosa()
+    y = audio_mono(data)
+    frame_len = max(1, int(frame_ms / 1000.0 * sr))
+    hop = max(1, int(hop_ms / 1000.0 * sr))
+    rms = librosa.feature.rms(y=y, frame_length=frame_len, hop_length=hop)[0]
+    return 20.0 * np.log10(np.maximum(rms, 1e-12))
+
+
+def _find_spaced_peaks(db: np.ndarray, sr: int, hop_ms: int,
+                       n: int, min_gap_s: float) -> List[int]:
+    """Return up to ``n`` frame indices that are local maxima, spaced apart.
+
+    Peaks are ranked by loudness but rejected if they sit within ``min_gap_s``
+    of an already-chosen higher peak, so we don't select the same section twice.
+    """
+    n = max(1, int(n))
+    min_gap = max(1, int(min_gap_s * 1000 / hop_ms))  # in frames
+    # candidate frames that are local maxima
+    peaks = []
+    for i in range(1, len(db) - 1):
+        if db[i] >= db[i - 1] and db[i] >= db[i + 1]:
+            peaks.append((db[i], i))
+    peaks.sort(reverse=True)  # loudest first
+
+    chosen = []
+    for _, idx in peaks:
+        if all(abs(idx - c) >= min_gap for c in chosen):
+            chosen.append(idx)
+            if len(chosen) >= n:
+                break
+    return sorted(chosen)
+
+
+def best_peaks(data: np.ndarray, sr: int, n: int = 1,
+               min_gap_s: float = 5.0,
+               hop_ms: int = 10, frame_ms: int = 25) -> List[float]:
+    """Return up to ``n`` peak times (seconds) spaced at least ``min_gap_s``.
+
+    These are the loudest, well-separated moments used as highlight anchors.
+    """
+    if not has_analysis() or data is None or len(data) == 0:
+        return []
+    db = _rms_db(data, sr, hop_ms=hop_ms, frame_ms=frame_ms)
+    if db.size == 0:
+        return []
+    idx = _find_spaced_peaks(db, sr, hop_ms, n, min_gap_s)
+    hop_s = hop_ms / 1000.0
+    return [float(i * hop_s) for i in idx]
+
+
+def highlight_window(data: np.ndarray, sr: int,
+                     before_s: float = 2.5, after_s: float = 1.0,
+                     min_gap_s: float = 5.0) -> Optional[Tuple[float, float]]:
+    """Return ``(start_s, end_s)`` for the single best highlight window.
+
+    Cuts ``before_s`` up to the loudest peak and ``after_s`` past it, clamped to
+    the clip bounds. Returns None if the clip is too short to yield a window.
+    """
+    if not has_analysis() or data is None or len(data) < sr:  # < 1s
+        return None
+    peaks = best_peaks(data, sr, n=1, min_gap_s=min_gap_s)
+    if not peaks:
+        return None
+    peak = peaks[0]
+    dur = duration_s(data, sr)
+    start = max(0.0, peak - before_s)
+    end = min(dur, peak + after_s)
+    if end - start < 0.5:  # too small to be useful
+        return None
+    return (start, end)

@@ -219,6 +219,13 @@ class Handler(BaseHTTPRequestHandler):
             tmp.unlink(missing_ok=True)
         info = analysis.analyze(arr, _sample_rate)
         info["duration_s"] = round(len(arr) / _sample_rate, 3)
+        # highlight info for the "Best Parts" auto-splice
+        win = analysis.highlight_window(arr, _sample_rate)
+        if win:
+            info["highlight"] = {
+                "start_s": round(win[0], 3),
+                "end_s": round(win[1], 3),
+            }
         return info
 
     def _handle_render(self):
@@ -231,6 +238,8 @@ class Handler(BaseHTTPRequestHandler):
         uploads = _sessions.get(sid, {}).get("uploads", {})
         clips = payload.get("clips", [])
         detect = payload.get("detect", "off")
+        before_s = float(payload.get("before_s", 2.5))
+        after_s = float(payload.get("after_s", 1.0))
         # rebuild clip objects with explicit source names and cut points
         collection = Collection(name=payload.get("name", "Mix"))
         for cdata in clips:
@@ -252,13 +261,13 @@ class Handler(BaseHTTPRequestHandler):
             source_index[src] = loaded[src]
 
         # fill unset bounds from detection for auto-splice modes
-        if detect in ("silence", "beat"):
+        if detect in ("highlight", "off"):
             for clip in collection.clips:
                 if clip.is_explicit() or clip.source not in source_index:
                     continue
                 auto = splice.auto_splice_clip(
                     clip, source_index[clip.source], sr=_sample_rate,
-                    detect=detect)
+                    detect=detect, before_s=before_s, after_s=after_s)
                 if auto.detected_start is not None:
                     clip.start = auto.detected_start
                 if auto.detected_end is not None:
